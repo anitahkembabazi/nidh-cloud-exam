@@ -1,0 +1,29 @@
+services:
+  rabbit1:
+    image: rabbitmq:4-alpine
+    hostname: rabbit1
+    ports:
+      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:5672:5672"
+    volumes:
+      - rabbit1-data:/var/lib/rabbitmq
+
+  db1:
+    image: cockroachdb/cockroach:v25.4.21
+    hostname: db1
+    command:
+      - start
+      - --insecure
+      - --advertise-addr=db1:26257
+      - --join=db1:26257
+      - --store=path=/cockroach/cockroach-data,size=1GiB
+      - --cache=64MiB
+      - --max-sql-memory=128MiB
+    ports:
+      - "127.0.0.1:26257:26257"
+    volumes:
+      - db1-data:/cockroach/cockroach-data
+
+volumes:
+  rabbit1-data:
+  db1-data:

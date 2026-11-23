@@ -1,0 +1,46 @@
+services:
+  rabbit2:
+    image: rabbitmq:4-alpine
+    hostname: rabbit2
+    volumes:
+      - rabbit2-data:/var/lib/rabbitmq
+
+  rabbit3:
+    image: rabbitmq:4-alpine
+    hostname: rabbit3
+    volumes:
+      - rabbit3-data:/var/lib/rabbitmq
+
+  db2:
+    image: cockroachdb/cockroach:v25.4.21
+    hostname: db2
+    command:
+      - start
+      - --insecure
+      - --advertise-addr=db2:26257
+      - --join=db1:26257,db2:26257,db3:26257
+      - --store=path=/cockroach/cockroach-data,size=1GiB
+      - --cache=64MiB
+      - --max-sql-memory=128MiB
+    volumes:
+      - db2-data:/cockroach/cockroach-data
+
+  db3:
+    image: cockroachdb/cockroach:v25.4.21
+    hostname: db3
+    command:
+      - start
+      - --insecure
+      - --advertise-addr=db3:26257
+      - --join=db1:26257,db2:26257,db3:26257
+      - --store=path=/cockroach/cockroach-data,size=1GiB
+      - --cache=64MiB
+      - --max-sql-memory=128MiB
+    volumes:
+      - db3-data:/cockroach/cockroach-data
+
+volumes:
+  rabbit2-data:
+  rabbit3-data:
+  db2-data:
+  db3-data:
