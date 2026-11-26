@@ -4,3 +4,5 @@ __pycache__/
 demo-batch.json
 
 .env
+
+m4-runs/
