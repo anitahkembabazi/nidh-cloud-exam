@@ -52,7 +52,12 @@ $csv = Join-Path $run.FullName 'resources.csv'
     Out-File $csv -Encoding utf8 -NoClobber
 # Start-Process joins ArgumentList on Windows. Quote both paths to preserve spaces.
 $arguments = '-u "{0}" --out "{1}" --seconds {2}' -f $baseline, (Join-Path $run.FullName 'workload'), $Seconds
-$workload = Start-Process -FilePath $python -ArgumentList $arguments -WorkingDirectory $PSScriptRoot -NoNewWindow -PassThru
+$start = New-Object System.Diagnostics.ProcessStartInfo
+$start.FileName = $python
+$start.Arguments = $arguments
+$start.WorkingDirectory = $PSScriptRoot
+$start.UseShellExecute = $false
+$workload = [System.Diagnostics.Process]::Start($start)
 try {
     do {
         $stamp = [DateTime]::UtcNow.ToString('o')
