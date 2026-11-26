@@ -16,7 +16,7 @@ services:
       - --insecure
       - --advertise-addr=db1:26257
       - --join=db1:26257
-      - --store=path=/cockroach/cockroach-data,size=1GiB
+      - --store=path=/cockroach/cockroach-data,size=1GiB,ballast-size=16MiB
       - --cache=64MiB
       - --max-sql-memory=128MiB
     ports:
