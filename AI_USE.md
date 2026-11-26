@@ -1,24 +1,9 @@
 # Milestone 3 AI-use declaration
 
-**Submission appendix for Kembabazi Anitah — pending personal approval.**
+**KEMBABAZI ANITAH · 26 November 2026**
 
-| Tool | Purpose | What happened to the output |
-| --- | --- | --- |
-| OpenAI Codex | Read the M3 grading and integrity rules, inspect repository records, and identify the pinned Python packages, Docker image tags and upstream licenses. | Codex wrote the drafts of CONTRIBUTIONS.md, THIRD_PARTY.md and this appendix. The drafts are in the M3 worktree for student review. |
+I used OpenAI ChatGPT and Codex while building the National Immunisation Data Hub prototype. ChatGPT provided code and commands for Docker Compose, RabbitMQ queues, the ingestion API, vaccination and sensor workers, synthetic data generation, and the district dashboard and its access controls. I used its guidance to run these components in VS Code and PowerShell and to troubleshoot startup, port, validation and Git errors.
 
-## Student’s account of AI use
+Codex prepared changes for the review branch, including the startup scripts, broker configuration, database partitioning and verification SQL, monitoring code, dashboard coverage display and documentation. It also ran integration checks in a separate Linux environment. I used the review branch on my Windows PC and supplied my own terminal output to check the results.
 
-The M1 and M2 reports disclose ChatGPT assistance with the design and technology-selection documents. If you reused that output in M3, identify the affected design choice, text or file and describe what you retained or changed.
-
-Before approving this appendix, account for any other significant M3 assistance, including code generation, debugging, synthetic data, configuration, testing, evidence interpretation and demonstration preparation. For each use, name the tool, explain why you used it, and record what you accepted, edited or discarded. Include the checks you performed. Complete the same review for the Codex drafts above.
-
-| Tool and affected file or task | Purpose | Output retained, changed or discarded | How I checked it |
-| --- | --- | --- | --- |
-| Codex documentation drafts | Submission documentation | [Complete after review] | [Record sources and corrections checked] |
-| [Additional use, if applicable] | | | |
-
-Under Part C5, the student must verify and understand the submission, be able to explain and modify it, and supply their own analysis, conclusions and recommendations. Cite the underlying technical sources in IEEE style. AI use is prohibited during the supervised session and panel questioning.
-
-**Student approval after checking this account (name and date):** ____________________
-
-Known assistance in the project conversation included ChatGPT/Codex guidance on Docker and PowerShell, API and worker code, replay and rejection tests, the mock sensor alert, district authorization and Git troubleshooting. For the review branch Codex prepared the startup changes, monitoring, child-key partition migration, coverage display and documentation, and ran separate cloud integration checks. The student personally ran the local batch, broker replication, database, access and sensor commands shown in the conversation. Review these statements and describe any edits or additional assistance before signing.
+My personal verification included starting the Windows pipeline, checking that the vaccination queues had three online RabbitMQ replicas, and measuring five additional stored doses after a batch upload. The Windows observations are recorded in my contribution statement. Codex also helped draft both declarations from the project history and the checks I reported. [Student contribution](CONTRIBUTIONS.md)
