@@ -3,10 +3,13 @@
 param(
     [ValidateRange(1, 2147483647)]
     [int]$Seconds = 600,
-    [string]$Out = (Join-Path $PSScriptRoot ("evidence\m4-{0}-{1}" -f (Get-Date -Format 'yyyyMMdd-HHmmss'), [guid]::NewGuid()))
+    [string]$Out
 )
 
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($Out)) {
+    $Out = Join-Path $PSScriptRoot ("evidence\m4-{0}-{1}" -f (Get-Date -Format 'yyyyMMdd-HHmmss'), [guid]::NewGuid())
+}
 $python = Join-Path $env:LOCALAPPDATA 'nidh-venv\Scripts\python.exe'
 $baseline = Join-Path $PSScriptRoot 'm4_baseline.py'
 $reconcile = Join-Path $PSScriptRoot 'm4_reconcile.py'
