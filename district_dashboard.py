@@ -64,16 +64,19 @@ def read_scope(
 @lru_cache(maxsize=32)
 def load_totals(scope, refresh_period):
     query = """
-        SELECT district_id, vaccine_code, count(*) AS doses
-        FROM vaccination_dose
-        WHERE district_id IS NOT NULL
+        SELECT d.district_id, d.vaccine_code, count(*) AS doses,
+               count(DISTINCT d.child_id) AS vaccinated_children, p.eligible_children,
+               round(100.0 * count(DISTINCT d.child_id) / p.eligible_children, 2)::FLOAT8 AS coverage_pct
+        FROM vaccination_dose AS d
+        LEFT JOIN demo_district_population AS p USING (district_id)
+        WHERE d.district_id IS NOT NULL
     """
     parameters = ()
     if scope is not None:
-        query += " AND district_id = %s"
+        query += " AND d.district_id = %s"
         parameters = (scope,)
 
-    query += " GROUP BY district_id, vaccine_code ORDER BY district_id, vaccine_code"
+    query += " GROUP BY d.district_id, d.vaccine_code, p.eligible_children ORDER BY d.district_id, d.vaccine_code"
 
     with psycopg.connect(DATABASE_URL, row_factory=dict_row) as db:
         return db.execute(query, parameters).fetchall()
@@ -89,7 +92,9 @@ def dashboard(scope: str | None = Depends(read_scope)):
     totals = load_totals(scope, int(monotonic() // 30))
     rows = "".join(
         f"<tr><td>{escape(row['district_id'])}</td>"
-        f"<td>{escape(row['vaccine_code'])}</td><td>{row['doses']}</td></tr>"
+        f"<td>{escape(row['vaccine_code'])}</td><td>{row['doses']}</td>"
+        f"<td>{row['vaccinated_children']}</td>"
+        f"<td>{format(row['coverage_pct'], '.2f') + '%' if row['coverage_pct'] is not None else 'Unavailable'}</td></tr>"
         for row in totals
     )
     return f"""<!doctype html>
@@ -111,8 +116,9 @@ def dashboard(scope: str | None = Depends(read_scope)):
         <h1>District vaccination totals</h1>
         <p>District scope: {escape(scope or "All districts")}</p>
         <table>
-            <thead><tr><th>District</th><th>Vaccine</th><th>Recorded doses</th></tr></thead>
-            <tbody>{rows or '<tr><td colspan="3">No district records yet.</td></tr>'}</tbody>
+            <caption>Coverage counts children with at least one recorded dose of the vaccine. The demo assumes 1,000 eligible children each in D001 and D002.</caption>
+            <thead><tr><th>District</th><th>Vaccine</th><th>Recorded doses</th><th>Children reached</th><th>Demo coverage</th></tr></thead>
+            <tbody>{rows or '<tr><td colspan="5">No district records yet.</td></tr>'}</tbody>
         </table>
     </body>
     </html>"""

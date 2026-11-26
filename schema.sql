@@ -19,3 +19,10 @@ CREATE TABLE IF NOT EXISTS nidh.public.rejected_message (
     reason       STRING NOT NULL,
     rejected_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Assumed eligible-child counts for the two synthetic demonstration districts.
+CREATE TABLE IF NOT EXISTS nidh.public.demo_district_population (
+    district_id STRING PRIMARY KEY,
+    eligible_children INT NOT NULL CHECK (eligible_children > 0)
+);
+INSERT INTO nidh.public.demo_district_population VALUES ('D001', 1000), ('D002', 1000)
+ON CONFLICT (district_id) DO NOTHING;

@@ -1,0 +1,68 @@
+services:
+  rabbit-cookie:
+    image: rabbitmq:4-alpine
+    user: "0:0"
+    restart: "no"
+    network_mode: none
+    volumes:
+      - rabbit1-data:/nodes/rabbit1
+      - rabbit2-data:/nodes/rabbit2
+      - rabbit3-data:/nodes/rabbit3
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        seed=""
+        for dir in /nodes/rabbit1 /nodes/rabbit2 /nodes/rabbit3; do
+          file="$$dir/.erlang.cookie"
+          if [ -e "$$file" ]; then
+            if [ ! -s "$$file" ]; then
+              echo "Empty cookie in $$dir. Check this volume before continuing."
+              exit 1
+            fi
+            if [ -z "$$seed" ]; then
+              seed="$$file"
+            elif ! cmp -s "$$seed" "$$file"; then
+              echo "Existing broker cookies differ. Check the volumes before continuing."
+              exit 1
+            fi
+          fi
+        done
+
+        umask 077
+        if [ -z "$$seed" ]; then
+          seed=/tmp/bootstrap.cookie
+          od -An -N32 -tx1 /dev/urandom | tr -d ' \n' > "$$seed"
+          test -s "$$seed"
+        fi
+        for dir in /nodes/rabbit1 /nodes/rabbit2 /nodes/rabbit3; do
+          file="$$dir/.erlang.cookie"
+          if [ ! -e "$$file" ]; then
+            tmp="$$dir/.nidh-cookie.tmp"
+            cp "$$seed" "$$tmp"
+            chown rabbitmq:rabbitmq "$$tmp"
+            chmod 400 "$$tmp"
+            mv "$$tmp" "$$file"
+          fi
+        done
+        echo "Shared RabbitMQ cookie ready."
+
+  rabbit1:
+    depends_on:
+      rabbit-cookie:
+        condition: service_completed_successfully
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/30-cluster.conf:ro
+
+  rabbit2:
+    depends_on:
+      rabbit-cookie:
+        condition: service_completed_successfully
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/30-cluster.conf:ro
+
+  rabbit3:
+    depends_on:
+      rabbit-cookie:
+        condition: service_completed_successfully
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/conf.d/30-cluster.conf:ro
