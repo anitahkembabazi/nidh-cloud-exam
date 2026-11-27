@@ -5,7 +5,7 @@ import json
 import math
 import time
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from http.client import HTTPException
 from pathlib import Path
@@ -71,36 +71,51 @@ def vaccinations(start, seconds, children, url, sent, ack):
     total = math.floor(seconds * RECORD_RATE)
     first = index = hot_sent = 0
     hot_target = total // 5
-    while first < total:
-        pace(start + first / RECORD_RATE)
-        hot = index % 5 == 0 and hot_sent < hot_target
-        available = hot_target - hot_sent if hot else total - first - (hot_target - hot_sent)
-        count = min(BATCH_SIZE, available)
-        payload = batch(children, first, count, index, hot)
-        first += count
-        index += 1
-        if hot:
-            hot_sent += count
-        ids = [record["record_id"] for record in payload["records"]]
+    def send(payload, ids):
         req = Request(url, json.dumps(payload).encode(), {"Content-Type": "application/json"})
-        stamp = now()
-        csv.writer(sent).writerows((stamp, rid) for rid in ids)
-        sent.flush()
         begin = time.monotonic()
-        try:
-            with urlopen(req, timeout=10) as response:
-                reply = json.load(response)
-                if (response.status != 202 or reply.get("confirmed") != len(ids)
+        with urlopen(req, timeout=10) as response:
+            reply = json.load(response)
+            if (response.status != 202 or reply.get("confirmed") != len(ids)
                         or reply.get("batch_id") != payload["batch_id"]):
-                    raise ValueError("incomplete acknowledgement")
-        except (OSError, HTTPException, ValueError, AttributeError) as exc:
-            errors[str(exc)] += 1
-            continue
-        latencies.append((time.monotonic() - begin) * 1000)
-        stamp = now()
-        csv.writer(ack).writerows((stamp, rid) for rid in ids)
-        ack.flush()
-        confirmed += len(ids)
+                raise ValueError("incomplete acknowledgement")
+        return now(), (time.monotonic() - begin) * 1000
+
+    def collect(done):
+        nonlocal confirmed
+        for future in done:
+            ids = pending.pop(future)
+            try:
+                stamp, latency = future.result()
+            except (OSError, HTTPException, ValueError, AttributeError) as exc:
+                errors[str(exc)] += 1
+                continue
+            csv.writer(ack).writerows((stamp, rid) for rid in ids)
+            ack.flush()
+            latencies.append(latency)
+            confirmed += len(ids)
+
+    pending = {}
+    with ThreadPoolExecutor(max_workers=8) as clients:
+        while first < total:
+            pace(start + first / RECORD_RATE)
+            hot = index % 5 == 0 and hot_sent < hot_target
+            available = hot_target - hot_sent if hot else total - first - (hot_target - hot_sent)
+            count = min(BATCH_SIZE, available)
+            payload = batch(children, first, count, index, hot)
+            first += count
+            index += 1
+            if hot:
+                hot_sent += count
+            ids = [record["record_id"] for record in payload["records"]]
+            if len(pending) >= 8:
+                done, _ = wait(pending, return_when=FIRST_COMPLETED)
+                collect(done)
+            stamp = now()
+            csv.writer(sent).writerows((stamp, rid) for rid in ids)
+            sent.flush()
+            pending[clients.submit(send, payload, ids)] = ids
+        collect(list(pending))
     return total, confirmed, errors, latencies
 
 
@@ -169,7 +184,7 @@ def main():
         doses = job.result()
         pace(start + args.seconds)
         elapsed = time.monotonic() - start
-    report = {"run_id": run_id, "seconds": args.seconds, "elapsed_seconds": elapsed,
+    report = {"run_id": run_id, "seconds": args.seconds, "max_inflight_batches": 8, "elapsed_seconds": elapsed,
               "vaccinations": metrics(*doses, elapsed), "sensors": metrics(*readings, elapsed)}
     summary = json.dumps(report, indent=2)
     (args.out / "summary.json").write_text(summary + "\n")
